@@ -134,4 +134,8 @@ public class analizadorJson {
         }
         return new String[0];
     }
+
+    public TablaHash getTablaPersonas() {
+        return tablaPersonas;
+    }
 }

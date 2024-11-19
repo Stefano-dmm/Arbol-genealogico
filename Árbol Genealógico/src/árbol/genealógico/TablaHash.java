@@ -284,4 +284,35 @@ public class TablaHash {
             }
         }
     }
+    
+    public Persona[] obtenerTodasLasPersonas() {
+        Persona[] personas = new Persona[numElementos];
+        int indice = 0;
+        
+        for (Entrada entrada : tabla) {
+            Entrada actual = entrada;
+            while (actual != null) {
+                if (actual.valor != null) {
+                    personas[indice++] = actual.valor;
+                }
+                actual = actual.siguiente;
+            }
+        }
+        
+        // Eliminar nulls y ajustar el tamaño del array
+        int contadorNoNulos = 0;
+        for (Persona p : personas) {
+            if (p != null) contadorNoNulos++;
+        }
+        
+        Persona[] resultado = new Persona[contadorNoNulos];
+        int j = 0;
+        for (Persona p : personas) {
+            if (p != null) {
+                resultado[j++] = p;
+            }
+        }
+        
+        return resultado;
+    }
 }
