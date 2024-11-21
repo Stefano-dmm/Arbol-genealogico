@@ -85,6 +85,9 @@ public class ExploradorJson extends Frame {
             
             // Crear el buscador después de cargar los datos
             buscador = new Buscador(analizador.getTablaPersonas());
+            
+            // Crear y mostrar el grafo
+            VisualizadorArbol visualizador = new VisualizadorArbol(analizador.getTablaPersonas());
 
         } catch (IOException ex) {
             mostrarError("Error al analizar el archivo: " + ex.getMessage());
