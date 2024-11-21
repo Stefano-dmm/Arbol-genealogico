@@ -13,6 +13,7 @@ public class ExploradorJson extends Frame {
     private analizadorJson analizador;
     private TextArea areaResultados;
     private Buscador buscador;
+    private VisualizadorArbol visualizador;
 
     public ExploradorJson() {
         analizador = new analizadorJson();
@@ -28,9 +29,27 @@ public class ExploradorJson extends Frame {
         Panel panelPrincipal = new Panel();
         panelPrincipal.setLayout(new BorderLayout(10, 10));
 
+        // Panel de búsqueda
+        Panel panelBusqueda = new Panel();
+        panelBusqueda.setLayout(new FlowLayout());
+        
+        // Componentes de búsqueda
+        TextField campoBusqueda = new TextField(30);
+        Choice tipoBusqueda = new Choice();
+        tipoBusqueda.add("Buscar por Nombre");
+        tipoBusqueda.add("Buscar por Título");
+        Button btnBuscar = new Button("Buscar");
+        
+        panelBusqueda.add(tipoBusqueda);
+        panelBusqueda.add(campoBusqueda);
+        panelBusqueda.add(btnBuscar);
+
         // Área de resultados
         areaResultados = new TextArea();
         areaResultados.setEditable(false);
+
+        // Agregar componentes al panel principal
+        panelPrincipal.add(panelBusqueda, BorderLayout.NORTH);
         panelPrincipal.add(areaResultados, BorderLayout.CENTER);
 
         // Barra de menú
@@ -49,6 +68,40 @@ public class ExploradorJson extends Frame {
             public void windowClosing(WindowEvent windowEvent){
                 System.exit(0);
             }        
+        });
+
+        // Modificar el ActionListener del botón de búsqueda
+        btnBuscar.addActionListener((ActionEvent e) -> {
+            if (buscador != null && visualizador != null) {
+                String textoBusqueda = campoBusqueda.getText().trim();
+                if (!textoBusqueda.isEmpty()) {
+                    // Redirigir la salida al área de texto
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    PrintStream ps = new PrintStream(baos);
+                    PrintStream old = System.out;
+                    System.setOut(ps);
+
+                    // Realizar búsqueda según el tipo seleccionado
+                    TablaHash.Persona personaEncontrada = null;
+                    if (tipoBusqueda.getSelectedItem().equals("Buscar por Nombre")) {
+                        personaEncontrada = buscador.buscarPorNombreYResaltar(textoBusqueda);
+                    } else {
+                        personaEncontrada = buscador.buscarPorTituloYResaltar(textoBusqueda);
+                    }
+
+                    // Restaurar la salida y mostrar resultados
+                    System.out.flush();
+                    System.setOut(old);
+                    areaResultados.setText(baos.toString());
+
+                    // Resaltar el nodo en el grafo si se encontró la persona
+                    if (personaEncontrada != null) {
+                        visualizador.resaltarNodo(personaEncontrada.nombreCompleto);
+                    }
+                }
+            } else {
+                mostrarError("Primero debe cargar un archivo JSON");
+            }
         });
     }
 
@@ -87,7 +140,7 @@ public class ExploradorJson extends Frame {
             buscador = new Buscador(analizador.getTablaPersonas());
             
             // Crear y mostrar el grafo
-            VisualizadorArbol visualizador = new VisualizadorArbol(analizador.getTablaPersonas());
+            visualizador = new VisualizadorArbol(analizador.getTablaPersonas());
 
         } catch (IOException ex) {
             mostrarError("Error al analizar el archivo: " + ex.getMessage());

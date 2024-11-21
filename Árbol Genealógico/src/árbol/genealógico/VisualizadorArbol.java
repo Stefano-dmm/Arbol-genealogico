@@ -3,13 +3,20 @@ package árbol.genealógico;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
 import org.graphstream.ui.view.Viewer;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Iterator;
 
 public class VisualizadorArbol {
     private final TablaHash tablaPersonas;
     private final Graph graph;
+    private Node nodoResaltadoActual;
+    private String estiloOriginal;
+    private Set<Node> nodosResaltadosActuales;
     
     public VisualizadorArbol(TablaHash tablaPersonas) {
         this.tablaPersonas = tablaPersonas;
+        this.nodosResaltadosActuales = new HashSet<>();
         
         // Configurar el estilo de visualización
         System.setProperty("org.graphstream.ui", "swing");
@@ -93,21 +100,36 @@ public class VisualizadorArbol {
                     if (persona.casa != null) {
                         node.setAttribute("ui.class", persona.casa.toLowerCase());
                     }
+                    
+                    // Crear nodos para los hijos que no existan
+                    for (String nombreHijoCompleto : persona.hijos) {
+                        if (nombreHijoCompleto != null) {
+                            String nombreHijoBase = obtenerPrimerNombre(nombreHijoCompleto);
+                            if (graph.getNode(nombreHijoBase) == null) {
+                                Node nodoHijo = graph.addNode(nombreHijoBase);
+                                nodoHijo.setAttribute("ui.label", nombreHijoBase);
+                                // Heredar la casa del padre si está disponible
+                                if (persona.casa != null) {
+                                    nodoHijo.setAttribute("ui.class", persona.casa.toLowerCase());
+                                }
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     continue;
                 }
             }
         }
         
-        // Luego crear las conexiones
+        // Luego crear todas las conexiones
         for (TablaHash.Persona persona : personas) {
             if (persona != null) {
-                String nombreHijo = obtenerPrimerNombre(persona.nombreCompleto);
+                String nombrePadre = obtenerPrimerNombre(persona.nombreCompleto);
                 
-                // Conectar con padres
-                for (String nombrePadreCompleto : persona.padres) {
-                    if (nombrePadreCompleto != null) {
-                        String nombrePadre = obtenerPrimerNombre(nombrePadreCompleto);
+                // Conectar con los hijos
+                for (String nombreHijoCompleto : persona.hijos) {
+                    if (nombreHijoCompleto != null) {
+                        String nombreHijo = obtenerPrimerNombre(nombreHijoCompleto);
                         Node nodoPadre = graph.getNode(nombrePadre);
                         Node nodoHijo = graph.getNode(nombreHijo);
                         
@@ -119,30 +141,6 @@ public class VisualizadorArbol {
                                 } catch (Exception e) {
                                     continue;
                                 }
-                            }
-                        }
-                    }
-                }
-                
-                // Crear conexiones para los hijos
-                for (String nombreHijoCompleto : persona.hijos) {
-                    if (nombreHijoCompleto != null) {
-                        String nombreHijoBase = obtenerPrimerNombre(nombreHijoCompleto);
-                        if (graph.getNode(nombreHijoBase) == null) {
-                            try {
-                                Node nodoHijo = graph.addNode(nombreHijoBase);
-                                nodoHijo.setAttribute("ui.label", nombreHijoBase);
-                            } catch (Exception e) {
-                                continue;
-                            }
-                        }
-                        
-                        String edgeId = nombreHijo + "-" + nombreHijoBase;
-                        if (graph.getEdge(edgeId) == null) {
-                            try {
-                                graph.addEdge(edgeId, nombreHijo, nombreHijoBase, true);
-                            } catch (Exception e) {
-                                continue;
                             }
                         }
                     }
@@ -164,5 +162,30 @@ public class VisualizadorArbol {
         // Configurar el layout después de mostrar el grafo
         viewer.getDefaultView().getCamera().setAutoFitView(true);
         viewer.getDefaultView().getCamera().setGraphViewport(-5000, -5000, 5000, 5000);
+    }
+    
+    public void resaltarNodo(String nombreCompleto) {
+        // Obtener el primer nombre para la búsqueda
+        String nombreBusqueda = obtenerPrimerNombre(nombreCompleto);
+        
+        // Restaurar el estilo del nodo anterior si existe
+        if (nodoResaltadoActual != null) {
+            nodoResaltadoActual.setAttribute("ui.style", estiloOriginal);
+            nodoResaltadoActual = null;
+        }
+        
+        // Buscar y resaltar el nuevo nodo
+        Node nodo = graph.getNode(nombreBusqueda);
+        if (nodo != null) {
+            // Guardar el estilo original
+            estiloOriginal = nodo.getAttribute("ui.style", String.class);
+            
+            // Aplicar nuevo estilo para resaltar
+            String nuevoEstilo = "size: 35px; "
+                + "fill-color: rgb(144,238,144);"; // Verde claro
+            
+            nodo.setAttribute("ui.style", nuevoEstilo);
+            nodoResaltadoActual = nodo;
+        }
     }
 } 

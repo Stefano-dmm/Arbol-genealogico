@@ -136,4 +136,59 @@ public class Buscador {
             System.out.println("Destino: " + persona.destino);
         }
     }
+
+    public TablaHash.Persona buscarPorNombreYResaltar(String nombre) {
+        String nombreBusqueda = nombre.toLowerCase().trim();
+        TablaHash.Persona personaEncontrada = null;
+        
+        TablaHash.Persona[] personas = tablaPersonas.obtenerTodasLasPersonas();
+        
+        // Primero buscar coincidencias exactas
+        for (TablaHash.Persona persona : personas) {
+            if (persona != null && 
+                persona.nombreCompleto != null && 
+                persona.nombreCompleto.equalsIgnoreCase(nombreBusqueda)) {
+                personaEncontrada = persona;
+                break;
+            }
+        }
+        
+        // Si no hay coincidencias exactas, buscar coincidencias parciales
+        if (personaEncontrada == null) {
+            for (TablaHash.Persona persona : personas) {
+                if (persona != null && 
+                    persona.nombreCompleto != null && 
+                    persona.nombreCompleto.toLowerCase().contains(nombreBusqueda)) {
+                    personaEncontrada = persona;
+                    break;
+                }
+            }
+        }
+        
+        // Mostrar los resultados en la consola como antes
+        buscarPorNombre(nombre);
+        
+        return personaEncontrada;
+    }
+
+    public TablaHash.Persona buscarPorTituloYResaltar(String titulo) {
+        String tituloBusqueda = titulo.toLowerCase().trim();
+        TablaHash.Persona personaEncontrada = null;
+        
+        TablaHash.Persona[] personas = tablaPersonas.obtenerTodasLasPersonas();
+        
+        for (TablaHash.Persona persona : personas) {
+            if (persona != null && 
+                persona.titulo != null && 
+                persona.titulo.toLowerCase().contains(tituloBusqueda)) {
+                personaEncontrada = persona;
+                break;
+            }
+        }
+        
+        // Mostrar los resultados en la consola como antes
+        buscarPorTitulo(titulo);
+        
+        return personaEncontrada;
+    }
 }
