@@ -4,8 +4,9 @@
  */
 package árbol.genealógico;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
 
 /**
  *
@@ -16,59 +17,52 @@ public class Main {
     /**
      * @param args the command line arguments
      */
+
     public static void main(String[] args) {
-        // Crear y mostrar la ventana del explorador
-        ExploradorJson explorador = new ExploradorJson();
-        explorador.setVisible(true);
+        // Configurar el UI de GraphStream antes de cualquier otra operación
+        System.setProperty("org.graphstream.ui", "swing");
         
-        // Iniciar sistema de búsqueda en terminal
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            
-            while (true) {
-                System.out.println("\n=== MENÚ DE BÚSQUEDA ===");
-                System.out.println("1. Buscar por nombre");
-                System.out.println("2. Buscar por título");
-                System.out.println("3. Salir");
-                System.out.println("Seleccione una opción (1-3):");
+        // Crear un selector de archivos
+        JFileChooser fileChooser = new JFileChooser();
+        
+        // Configurar el selector para mostrar solo archivos JSON
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("Archivos JSON", "json");
+        fileChooser.setFileFilter(filter);
+        
+        // Establecer el directorio inicial como el directorio del proyecto
+        String projectPath = System.getProperty("user.dir");
+        File projectDir = new File(projectPath + "/src/árbol/genealógico/json");
+        if (projectDir.exists()) {
+            fileChooser.setCurrentDirectory(projectDir);
+        }
+        
+        // Mostrar el diálogo de selección de archivo
+        int result = fileChooser.showOpenDialog(null);
+        
+        if (result == JFileChooser.APPROVE_OPTION) {
+            try {
+                // Obtener el archivo seleccionado
+                File selectedFile = fileChooser.getSelectedFile();
                 
-                String opcion = reader.readLine();
+                // Cargar y procesar el archivo
+                ExploradorJson explorador = new ExploradorJson();
+                Tree arbol = explorador.cargarDesdeArchivo(selectedFile.getAbsolutePath());
                 
-                switch (opcion) {
-                    case "1":
-                        if (explorador.getBuscador() != null) {
-                            System.out.println("Ingrese el nombre a buscar:");
-                            String nombre = reader.readLine();
-                            explorador.getBuscador().buscarPorNombre(nombre);
-                        } else {
-                            System.out.println("Primero debe cargar un archivo JSON desde la ventana.");
-                        }
-                        break;
-                        
-                    case "2":
-                        if (explorador.getBuscador() != null) {
-                            System.out.println("Ingrese el título a buscar:");
-                            String titulo = reader.readLine();
-                            explorador.getBuscador().buscarPorTitulo(titulo);
-                        } else {
-                            System.out.println("Primero debe cargar un archivo JSON desde la ventana.");
-                        }
-                        break;
-                        
-                    case "3":
-                        System.out.println("¡Hasta luego!");
-                        System.exit(0);
-                        break;
-                        
-                    default:
-                        System.out.println("Opción no válida. Por favor, seleccione 1, 2 o 3.");
-                        break;
+                if (arbol != null) {
+                    // Crear y mostrar el grafo
+                    Grafo grafo = new Grafo(arbol);
+                    grafo.mostrarGrafo();
+                } else {
+                    System.out.println("Error al cargar el archivo JSON");
                 }
+            } catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                e.printStackTrace();
             }
-            
-        } catch (Exception e) {
-            System.out.println("Error en la entrada: " + e.getMessage());
+        } else {
+            System.out.println("No se seleccionó ningún archivo");
         }
     }
-    
 }
+
+
