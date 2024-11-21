@@ -10,6 +10,7 @@ public class analizadorJson {
     private int numMotes;
     private int numNombres;
     private static final int MAX_ELEMENTOS = 100;
+    private TablaHash tablaPersonas;
 
     public analizadorJson() {
         this.casas = new JsonObject[MAX_ELEMENTOS];
@@ -18,6 +19,7 @@ public class analizadorJson {
         this.numCasas = 0;
         this.numMotes = 0;
         this.numNombres = 0;
+        tablaPersonas = new TablaHash();
     }
 
     public void cargarCasa(String rutaArchivo) throws IOException {
@@ -54,73 +56,42 @@ public class analizadorJson {
         for (int i = 0; i < numCasas; i++) {
             JsonObject casa = casas[i];
             for (String nombreCompleto : casa.getClaves()) {
-                mostrarPersona(nombreCompleto, (JsonArray) casa.get(nombreCompleto));
+                JsonArray datos = (JsonArray) casa.get(nombreCompleto);
+                procesarPersona(nombreCompleto, datos);
             }
         }
+        // Imprimir los nodos después de procesarlos
+        tablaPersonas.imprimirNodos();
     }
 
-    private void mostrarPersona(String nombreCompleto, JsonArray datos) {
-        StringBuilder linea = new StringBuilder(nombreCompleto);
+    private void procesarPersona(String nombreCompleto, JsonArray datos) {
+        TablaHash.Persona persona = tablaPersonas.new Persona();
+        persona.nombreCompleto = nombreCompleto;
         
-        String numero = obtenerValor(datos, "Of his name");
-        if (numero != null) {
-            linea.append(" ").append(numero);
-        }
-
+        // Datos básicos
+        persona.numero = obtenerValor(datos, "Of his name");
+        persona.mote = obtenerValor(datos, "Known throughout as");
+        persona.titulo = obtenerValor(datos, "Held title");
+        persona.conyuge = obtenerValor(datos, "Wed to");
+        persona.ojos = obtenerValor(datos, "Of eyes");
+        persona.cabello = obtenerValor(datos, "Of hair");
+        persona.notas = obtenerValor(datos, "Notes");
+        persona.destino = obtenerValor(datos, "Fate");
+        
+        // Procesar padres
         String[] padres = obtenerPadres(datos);
         if (padres.length > 0) {
-            linea.append(" | Hijo de: ");
-            for (int i = 0; i < padres.length; i++) {
-                if (i > 0) linea.append(", ");
-                linea.append(padres[i]);
-            }
+            System.arraycopy(padres, 0, persona.padres, 0, Math.min(padres.length, 2));
         }
-
-        String mote = obtenerValor(datos, "Known throughout as");
-        if (mote != null) {
-            linea.append(" | Conocido como: ").append(mote);
-        }
-
-        String titulo = obtenerValor(datos, "Held title");
-        if (titulo != null) {
-            linea.append(" | Título: ").append(titulo);
-        }
-
-        String conyuge = obtenerValor(datos, "Wed to");
-        if (conyuge != null) {
-            linea.append(" | Casado con: ").append(conyuge);
-        }
-
-        String ojos = obtenerValor(datos, "Of eyes");
-        if (ojos != null) {
-            linea.append(" | Ojos: ").append(ojos);
-        }
-
-        String cabello = obtenerValor(datos, "Of hair");
-        if (cabello != null) {
-            linea.append(" | Cabello: ").append(cabello);
-        }
-
+        
+        // Procesar hijos
         String[] hijos = obtenerLista(datos, "Father to");
         if (hijos.length > 0) {
-            linea.append(" | Hijos: ");
-            for (int i = 0; i < hijos.length; i++) {
-                if (i > 0) linea.append(", ");
-                linea.append(hijos[i]);
-            }
+            System.arraycopy(hijos, 0, persona.hijos, 0, Math.min(hijos.length, 10));
         }
-
-        String notas = obtenerValor(datos, "Notes");
-        if (notas != null) {
-            linea.append(" | Notas: ").append(notas);
-        }
-
-        String destino = obtenerValor(datos, "Fate");
-        if (destino != null) {
-            linea.append(" | Destino: ").append(destino);
-        }
-
-        System.out.println(linea);
+        
+        // Insertar en la tabla hash
+        tablaPersonas.insertar(nombreCompleto, persona);
     }
 
     private String obtenerValor(JsonArray datos, String clave) {
@@ -162,5 +133,9 @@ public class analizadorJson {
             }
         }
         return new String[0];
+    }
+
+    public TablaHash getTablaPersonas() {
+        return tablaPersonas;
     }
 }
