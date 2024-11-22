@@ -3,21 +3,23 @@ package árbol.genealógico;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
 import org.graphstream.ui.view.Viewer;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Iterator;
+import árbol.genealógico.TablaHash.Persona;
 
 public class VisualizadorArbol {
-    private final TablaHash tablaPersonas;
-    private final Graph graph;
-    private Node nodoResaltadoActual;
-    private String estiloOriginal;
-    private Set<Node> nodosResaltadosActuales;
-    
+    private TablaHash tablaPersonas;
+    private SingleGraph graph;
+    private String parent;
+    private JsonObject verticesMap;
+
     public VisualizadorArbol(TablaHash tablaPersonas) {
         this.tablaPersonas = tablaPersonas;
-        this.nodosResaltadosActuales = new HashSet<>();
-        
+        this.verticesMap = new JsonObject();
+        inicializarGrafo();
+        crearArbol();
+        mostrarGrafo();
+    }
+
+    private void inicializarGrafo() {
         // Configurar el estilo de visualización
         System.setProperty("org.graphstream.ui", "swing");
         
@@ -80,12 +82,9 @@ public class VisualizadorArbol {
         // Configurar visualización constante
         graph.setAttribute("ui.size-mode", "normal");
         graph.setAttribute("ui.edge-size-mode", "normal");
-        
-        crearGrafo();
-        mostrarGrafo();
     }
-    
-    private void crearGrafo() {
+
+    private void crearArbol() {
         TablaHash.Persona[] personas = tablaPersonas.obtenerTodasLasPersonas();
         
         // Primero crear todos los nodos
@@ -148,14 +147,14 @@ public class VisualizadorArbol {
             }
         }
     }
-    
+
     private String obtenerPrimerNombre(String nombreCompleto) {
         if (nombreCompleto == null) return null;
         String[] partes = nombreCompleto.split(" ");
         return partes[0];
     }
-    
-    private void mostrarGrafo() {
+
+    public void mostrarGrafo() {
         Viewer viewer = graph.display();
         viewer.setCloseFramePolicy(Viewer.CloseFramePolicy.HIDE_ONLY);
         
@@ -163,29 +162,32 @@ public class VisualizadorArbol {
         viewer.getDefaultView().getCamera().setAutoFitView(true);
         viewer.getDefaultView().getCamera().setGraphViewport(-5000, -5000, 5000, 5000);
     }
-    
+
     public void resaltarNodo(String nombreCompleto) {
         // Obtener el primer nombre para la búsqueda
         String nombreBusqueda = obtenerPrimerNombre(nombreCompleto);
         
         // Restaurar el estilo del nodo anterior si existe
-        if (nodoResaltadoActual != null) {
-            nodoResaltadoActual.setAttribute("ui.style", estiloOriginal);
-            nodoResaltadoActual = null;
+        if (parent != null) {
+            Node nodoAnterior = graph.getNode(parent);
+            if (nodoAnterior != null) {
+                nodoAnterior.setAttribute("ui.style", nodoAnterior.getAttribute("ui.style", String.class));
+            }
+            parent = null;
         }
         
         // Buscar y resaltar el nuevo nodo
         Node nodo = graph.getNode(nombreBusqueda);
         if (nodo != null) {
             // Guardar el estilo original
-            estiloOriginal = nodo.getAttribute("ui.style", String.class);
+            String estiloOriginal = nodo.getAttribute("ui.style", String.class);
             
             // Aplicar nuevo estilo para resaltar
             String nuevoEstilo = "size: 35px; "
                 + "fill-color: rgb(144,238,144);"; // Verde claro
             
             nodo.setAttribute("ui.style", nuevoEstilo);
-            nodoResaltadoActual = nodo;
+            parent = nombreBusqueda;
         }
     }
 } 
