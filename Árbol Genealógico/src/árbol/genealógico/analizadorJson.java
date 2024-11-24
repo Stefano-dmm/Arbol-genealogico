@@ -75,7 +75,16 @@ public class analizadorJson {
         }
         
         // Procesar datos básicos
-        persona.numero = obtenerValor(datos, "Of his name");
+        String nombreOfHisName = obtenerValor(datos, "Of his name");
+        if (nombreOfHisName != null && !nombreOfHisName.isEmpty()) {
+            // Asegurarse de que el nombre sea único agregando "Of his name" si es necesario
+            String nombreUnico = nombreCompleto + " " + nombreOfHisName;
+            if (tablaPersonas.buscarPorNombre(nombreUnico) == null) {
+                persona.nombreCompleto = nombreUnico; // Asignamos el nombre único
+            }
+        }
+        
+        // Procesar otros atributos
         persona.mote = obtenerValor(datos, "Known throughout as");
         persona.titulo = obtenerValor(datos, "Held title");
         persona.conyuge = obtenerValor(datos, "Wed to");
@@ -85,30 +94,27 @@ public class analizadorJson {
         persona.destino = obtenerValor(datos, "Fate");
         
         // Procesar "Born to" (padres)
-        for (int i = 0; i < datos.size(); i++) {
-            JsonObject dato = (JsonObject) datos.get(i);
-            if (dato.get("Born to") != null) {
-                String padre = (String) dato.get("Born to");
-                if (padre != null && !padre.equals("[Unknown]")) {
-                    // Agregar padre a la lista de padres
-                    for (int j = 0; j < persona.padres.length; j++) {
-                        if (persona.padres[j] == null) {
-                            persona.padres[j] = padre;
-                            break;
-                        }
+        String[] padres = obtenerPadres(datos);
+        for (String padre : padres) {
+            if (padre != null && !padre.equals("[Unknown]")) {
+                // Agregar padre a la lista de padres
+                for (int j = 0; j < persona.padres.length; j++) {
+                    if (persona.padres[j] == null) {
+                        persona.padres[j] = padre;
+                        break;
                     }
-                    
-                    // Crear o actualizar el nodo del padre
-                    TablaHash.Persona nodoPadre = tablaPersonas.buscarPorNombre(padre);
-                    if (nodoPadre == null) {
-                        nodoPadre = tablaPersonas.new Persona();
-                        nodoPadre.nombreCompleto = padre;
-                        nodoPadre.padres = new String[2];
-                        nodoPadre.hijos = new String[10];
-                    }
-                    agregarHijoAPadre(nodoPadre, nombreCompleto);
-                    tablaPersonas.insertar(padre, nodoPadre);
                 }
+                
+                // Crear o actualizar el nodo del padre
+                TablaHash.Persona nodoPadre = tablaPersonas.buscarPorNombre(padre);
+                if (nodoPadre == null) {
+                    nodoPadre = tablaPersonas.new Persona();
+                    nodoPadre.nombreCompleto = padre;
+                    nodoPadre.padres = new String[2];
+                    nodoPadre.hijos = new String[10];
+                }
+                agregarHijoAPadre(nodoPadre, persona.nombreCompleto);
+                tablaPersonas.insertar(padre, nodoPadre);
             }
         }
         
@@ -126,8 +132,8 @@ public class analizadorJson {
                 }
             }
         }
-        
-        tablaPersonas.insertar(nombreCompleto, persona);
+         
+        tablaPersonas.insertar(persona.nombreCompleto, persona);
     }
 
     private String buscarNombreCompletoPorPrimero(String primerNombre) {
