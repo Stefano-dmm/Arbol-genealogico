@@ -11,27 +11,34 @@ import pruebaarboles2.estructuras.SimpleSet;
 public class TreeGraph {
     private Graph graph;
     private SimpleMap<String, String> nombreCompletos;
-    private static final String STYLE_SHEET = 
+    private static final String STYLESHEET = 
         "node {" +
-        "   fill-color: #A40000;" +
         "   size: 30px;" +
-        "   text-size: 14px;" +
-        "   text-color: white;" +
+        "   shape: circle;" +
+        "   fill-color: white;" +
+        "   stroke-mode: plain;" +
+        "   stroke-color: black;" +
+        "   text-alignment: center;" +
+        "   text-size: 12;" +
         "   text-style: bold;" +
-        "   text-background-mode: rounded-box;" +
-        "   text-background-color: #A40000;" +
-        "   text-padding: 5px;" +
+        "}" +
+        "node.found {" +
+        "   fill-color: #90EE90;" +
+        "}" +
+        "node.base {" +
+        "   fill-color: #FFA500;" +
         "}" +
         "edge {" +
-        "   fill-color: #400000;" +
-        "   arrow-size: 10px;" +
+        "   shape: line;" +
+        "   fill-color: black;" +
+        "   arrow-size: 5px, 4px;" +
         "}";
 
     public TreeGraph() {
         System.setProperty("org.graphstream.ui", "swing");
         this.graph = new SingleGraph("Árbol Genealógico Targaryen");
         this.nombreCompletos = new SimpleMap<>();
-        graph.setAttribute("ui.stylesheet", STYLE_SHEET);
+        graph.setAttribute("ui.stylesheet", STYLESHEET);
     }
 
     private String obtenerNumeroRomano(JSONArray infoPersona) {
@@ -251,8 +258,7 @@ public class TreeGraph {
         Viewer viewer = graph.display();
         viewer.setCloseFramePolicy(Viewer.CloseFramePolicy.HIDE_ONLY);
         
-        // Crear y mostrar la ventana de información
-        InfoVentana infoVentana = new InfoVentana();
+        InfoVentana infoVentana = new InfoVentana(this);
         actualizarInformacionNodos(infoVentana);
         infoVentana.setVisible(true);
     }
@@ -306,5 +312,104 @@ public class TreeGraph {
 
     public Graph getGraph() {
         return graph;
+    }
+
+    public boolean buscarYMostrarNodo(String nombre, StringBuilder resultado) {
+        // Limpiar resaltados anteriores
+        graph.nodes().forEach(n -> n.removeAttribute("ui.class"));
+        
+        boolean encontrado = false;
+        for (Node nodo : graph.nodes().toArray(Node[]::new)) {
+            String label = (String) nodo.getAttribute("ui.label");
+            String nombreBase = obtenerNombreBase(nodo.getId());
+            
+            if (coincideConBusqueda(label, nombreBase, nombre)) {
+                encontrado = true;
+                nodo.setAttribute("ui.class", "found");  // Resaltar nodo
+                resultado.append("Nombre completo: ").append(label).append("\n");
+                resultado.append("Nombre: ").append(nombreBase).append("\n");
+                resultado.append("ID: ").append(nodo.getId()).append("\n");
+                resultado.append("------------------\n");
+            }
+        }
+        return encontrado;
+    }
+
+    public boolean buscarHijos(String nombre, StringBuilder resultado) {
+        // Limpiar resaltados anteriores
+        graph.nodes().forEach(n -> n.removeAttribute("ui.class"));
+        
+        boolean encontrado = false;
+        for (Node nodo : graph.nodes().toArray(Node[]::new)) {
+            String label = (String) nodo.getAttribute("ui.label");
+            String nombreBase = obtenerNombreBase(nodo.getId());
+            
+            if (coincideConBusqueda(label, nombreBase, nombre)) {
+                encontrado = true;
+                nodo.setAttribute("ui.class", "base");  // Nodo base en naranja
+                resultado.append("Hijos de ").append(label).append(":\n");
+                
+                boolean tieneHijos = false;
+                for (Edge edge : nodo.leavingEdges().toArray(Edge[]::new)) {
+                    Node hijo = edge.getTargetNode();
+                    hijo.setAttribute("ui.class", "found");  // Hijos en verde
+                    String hijoLabel = (String) hijo.getAttribute("ui.label");
+                    String hijoNombre = obtenerNombreBase(hijo.getId());
+                    resultado.append("- ").append(hijoLabel).append(" (").append(hijoNombre).append(")\n");
+                    tieneHijos = true;
+                }
+                
+                if (!tieneHijos) {
+                    resultado.append("No tiene hijos registrados.\n");
+                }
+                resultado.append("------------------\n");
+            }
+        }
+        return encontrado;
+    }
+
+    public boolean buscarPadres(String nombre, StringBuilder resultado) {
+        // Limpiar resaltados anteriores
+        graph.nodes().forEach(n -> n.removeAttribute("ui.class"));
+        
+        boolean encontrado = false;
+        for (Node nodo : graph.nodes().toArray(Node[]::new)) {
+            String label = (String) nodo.getAttribute("ui.label");
+            String nombreBase = obtenerNombreBase(nodo.getId());
+            
+            if (coincideConBusqueda(label, nombreBase, nombre)) {
+                encontrado = true;
+                nodo.setAttribute("ui.class", "base");  // Nodo base en naranja
+                resultado.append("Padres de ").append(label).append(":\n");
+                
+                boolean tienePadres = false;
+                for (Edge edge : nodo.enteringEdges().toArray(Edge[]::new)) {
+                    Node padre = edge.getSourceNode();
+                    padre.setAttribute("ui.class", "found");  // Padres en verde
+                    String padreLabel = (String) padre.getAttribute("ui.label");
+                    String padreNombre = obtenerNombreBase(padre.getId());
+                    resultado.append("- ").append(padreLabel).append(" (").append(padreNombre).append(")\n");
+                    tienePadres = true;
+                }
+                
+                if (!tienePadres) {
+                    resultado.append("No tiene padres registrados.\n");
+                }
+                resultado.append("------------------\n");
+            }
+        }
+        return encontrado;
+    }
+
+    // Métodos auxiliares nuevos
+    private String obtenerNombreBase(String id) {
+        // El ID tiene el formato: NombreBase_NumeroRomano_Contador
+        return id.split("_")[0].replaceAll("_", " ");
+    }
+
+    private boolean coincideConBusqueda(String label, String nombreBase, String busqueda) {
+        busqueda = busqueda.toLowerCase();
+        return label.toLowerCase().contains(busqueda) || 
+               nombreBase.toLowerCase().contains(busqueda);
     }
 } 
