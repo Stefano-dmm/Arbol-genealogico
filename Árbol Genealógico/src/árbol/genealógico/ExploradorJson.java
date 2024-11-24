@@ -4,28 +4,16 @@
  */
 package árbol.genealógico;
 
-import java.awt.BorderLayout;
-import java.awt.Button;
-import java.awt.Dialog;
-import java.awt.FlowLayout;
-import java.awt.Frame;
-import java.awt.Label;
-import java.awt.Panel;
-import java.awt.TextArea;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
 
 public class ExploradorJson extends Frame {
     private String archivoSeleccionado;
     private analizadorJson analizador;
     private TextArea areaResultados;
+    private Buscador buscador;
+    private VisualizadorArbol visualizador;
 
     public ExploradorJson() {
         analizador = new analizadorJson();
@@ -41,17 +29,41 @@ public class ExploradorJson extends Frame {
         Panel panelPrincipal = new Panel();
         panelPrincipal.setLayout(new BorderLayout(10, 10));
 
-        // Botón de selección
-        Button btnSeleccionar = new Button("Seleccionar Archivo JSON");
-        btnSeleccionar.addActionListener((ActionEvent e) -> {
-            seleccionarArchivo();
-        });
-        panelPrincipal.add(btnSeleccionar, BorderLayout.NORTH);
+        // Panel de búsqueda
+        Panel panelBusqueda = new Panel();
+        panelBusqueda.setLayout(new FlowLayout());
+        
+        // Componentes de búsqueda
+        TextField campoBusqueda = new TextField(30);
+        Choice tipoBusqueda = new Choice();
+        tipoBusqueda.add("Buscar por Nombre");
+        tipoBusqueda.add("Buscar por Título");
+        tipoBusqueda.add("Buscar Hijos de");
+        tipoBusqueda.add("Buscar Padres de");
+        Button btnBuscar = new Button("Buscar");
+        Button btnLimpiar = new Button("Limpiar Búsqueda");
+        
+        panelBusqueda.add(tipoBusqueda);
+        panelBusqueda.add(campoBusqueda);
+        panelBusqueda.add(btnBuscar);
+        panelBusqueda.add(btnLimpiar);
 
-        // Área de resultados
+        // Área de resultados (usando AWT TextArea)
         areaResultados = new TextArea();
         areaResultados.setEditable(false);
+
+        // Agregar componentes al panel principal
+        panelPrincipal.add(panelBusqueda, BorderLayout.NORTH);
         panelPrincipal.add(areaResultados, BorderLayout.CENTER);
+
+        // Barra de menú
+        MenuBar menuBar = new MenuBar();
+        Menu menuArchivo = new Menu("Archivo");
+        MenuItem abrirItem = new MenuItem("Abrir JSON");
+        abrirItem.addActionListener((ActionEvent e) -> seleccionarArchivo());
+        menuArchivo.add(abrirItem);
+        menuBar.add(menuArchivo);
+        setMenuBar(menuBar);
 
         add(panelPrincipal);
 
@@ -61,23 +73,77 @@ public class ExploradorJson extends Frame {
                 System.exit(0);
             }        
         });
+
+        // Modificar el ActionListener del botón de búsqueda
+        btnBuscar.addActionListener((ActionEvent e) -> {
+            if (buscador != null && visualizador != null) {
+                String textoBusqueda = campoBusqueda.getText().trim();
+                if (!textoBusqueda.isEmpty()) {
+                    // Redirigir la salida al área de texto
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    PrintStream ps = new PrintStream(baos);
+                    PrintStream old = System.out;
+                    System.setOut(ps);
+
+                    // Realizar búsqueda según el tipo seleccionado
+                    switch (tipoBusqueda.getSelectedItem()) {
+                        case "Buscar por Nombre":
+                            buscador.buscarPorNombreYResaltar(textoBusqueda);
+                            break;
+                        case "Buscar por Título":
+                            buscador.buscarPorTituloYResaltar(textoBusqueda);
+                            break;
+                        case "Buscar Hijos de":
+                            buscador.buscarHijosDe(textoBusqueda);
+                            break;
+                        case "Buscar Padres de":
+                            buscador.buscarPadresDe(textoBusqueda);
+                            break;
+                    }
+
+                    // Restaurar la salida y mostrar resultados
+                    System.out.flush();
+                    System.setOut(old);
+                    areaResultados.setText(baos.toString());
+                }
+            } else {
+                mostrarError("Primero debe cargar un archivo JSON");
+            }
+        });
+
+        // Añadir ActionListener para el botón de limpiar
+        btnLimpiar.addActionListener((ActionEvent e) -> {
+            if (visualizador != null) {
+                // Limpiar el resaltado del grafo
+                visualizador.limpiarResaltado();
+                
+                // Redirigir la salida al área de texto
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PrintStream ps = new PrintStream(baos);
+                PrintStream old = System.out;
+                System.setOut(ps);
+                
+                // Mostrar todos los nodos nuevamente
+                analizador.mostrarPersonas();
+                
+                // Restaurar la salida y mostrar resultados
+                System.out.flush();
+                System.setOut(old);
+                areaResultados.setText(baos.toString());
+                
+                // Limpiar el campo de búsqueda
+                campoBusqueda.setText("");
+            }
+        });
     }
 
     private void seleccionarArchivo() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Seleccionar archivo JSON");
+        FileDialog fd = new FileDialog(this, "Seleccionar archivo JSON", FileDialog.LOAD);
+        fd.setFile("*.json");
+        fd.setVisible(true);
         
-        // Filtro para archivos JSON
-        FileNameExtensionFilter filter = new FileNameExtensionFilter(
-            "Archivos JSON (*.json)", "json");
-        fileChooser.setFileFilter(filter);
-        
-        // Mostrar el diálogo de selección de archivo
-        int resultado = fileChooser.showOpenDialog(this);
-        
-        if (resultado == JFileChooser.APPROVE_OPTION) {
-            File archivo = fileChooser.getSelectedFile();
-            archivoSeleccionado = archivo.getAbsolutePath();
+        if (fd.getFile() != null) {
+            archivoSeleccionado = fd.getDirectory() + fd.getFile();
             analizarArchivo();
         }
     }
@@ -101,23 +167,31 @@ public class ExploradorJson extends Frame {
             System.out.flush();
             System.setOut(old);
             areaResultados.setText(baos.toString());
+            
+            // Crear y mostrar el grafo primero
+            visualizador = new VisualizadorArbol(analizador.getTablaPersonas(), areaResultados);
+            
+            // Crear el buscador después
+            buscador = new Buscador(analizador.getTablaPersonas(), visualizador);
 
         } catch (IOException ex) {
-            Dialog dialogo = new Dialog(this, "Error", true);
-            dialogo.setLayout(new FlowLayout());
-            dialogo.add(new Label("Error al analizar el archivo: " + ex.getMessage()));
-            Button btnOk = new Button("OK");
-            btnOk.addActionListener((ActionEvent e) -> {
-                dialogo.dispose();
-            });
-            dialogo.add(btnOk);
-            dialogo.setSize(300, 100);
-            dialogo.setVisible(true);
+            mostrarError("Error al analizar el archivo: " + ex.getMessage());
         }
     }
 
-    public static void main(String[] args) {
-        ExploradorJson explorador = new ExploradorJson();
-        explorador.setVisible(true);
+    private void mostrarError(String mensaje) {
+        Dialog dialogo = new Dialog(this, "Error", true);
+        dialogo.setLayout(new FlowLayout());
+        dialogo.add(new Label(mensaje));
+        Button btnOk = new Button("OK");
+        btnOk.addActionListener((ActionEvent e) -> dialogo.dispose());
+        dialogo.add(btnOk);
+        dialogo.setSize(300, 100);
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setVisible(true);
+    }
+
+    public Buscador getBuscador() {
+        return buscador;
     }
 }
